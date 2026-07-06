@@ -1,108 +1,92 @@
-# NexusAI — Productivity Assistant
-**AI Multi-Agent Productivity Assistant for Corporate Employees**
+# AI-Powered Productivity Assistant
 
-## Quick Start
+A web-based, multi-agent AI application that automatically reads incoming emails, extracts actionable items, generates summaries, and presents everything on a unified dashboard — built to reduce the hours professionals spend manually managing emails, calendars, and tasks.
 
-### 1. Install dependencies
-```bash
-pip install flask
+Developed as a team project by **Prabha Kamble** and **Rudranshsing Rajput**, guided by **Dr. Gauri Dhongade** at MIT World Peace University.
+
+## Problem
+
+Professionals spend 2–3 hours daily managing emails, and existing tools (email clients, calendars, task managers) operate in isolation — requiring manual, error-prone effort to bridge them.
+
+## Solution
+
+This project automates that bridge. Incoming Gmail messages are detected in near real-time, processed through a multi-agent AI pipeline, and turned into structured tasks, meeting entries, and summaries — all visible on a single dashboard, with zero manual intervention once configured.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python (Flask) |
+| Automation | n8n (self-hosted via Docker) |
+| AI / Intelligence | Google Gemini 1.5 Flash |
+| Database | SQLite3 |
+| Tunneling | ngrok |
+| Frontend | HTML/CSS with Jinja2 templating |
+
+## How It Works
+
+1. **Ingestion** — n8n's Gmail Trigger polls the inbox every 60 seconds via OAuth2 and extracts new email metadata.
+2. **Transmission** — n8n sends the email data as a JSON payload via HTTP POST to a Flask webhook, exposed to the internet through ngrok.
+3. **Processing** — The Flask backend routes the content through a set of specialized agents.
+4. **AI Analysis** — Relevant content is sent to the Gemini 1.5 Flash API for summarization and task/meeting extraction.
+5. **Storage** — Structured results (summaries, tasks, meetings, logs) are saved to SQLite.
+6. **Display** — The dashboard updates to show new emails, tasks, and meetings.
+
+```
+Gmail Inbox
+     │
+     ▼
+n8n (Gmail Trigger, polls every 60s via OAuth2)
+     │
+     ▼  (JSON payload via HTTP POST)
+Flask Backend (ngrok-exposed webhook)
+     │
+     ▼
+Multi-Agent Processing Layer  ──▶  Google Gemini 1.5 Flash API
+     │
+     ▼
+SQLite Database
+     │
+     ▼
+Dashboard (Jinja2-rendered)
 ```
 
-### 2. Run the app
+## Multi-Agent System
+
+| Agent | Responsibility |
+|---|---|
+| Email Agent | Intake and initial processing of raw email data |
+| Summary Agent | Condenses long threads into 2–3 sentence summaries via Gemini |
+| Task Agent | Extracts actionable items into structured JSON via Gemini |
+| Meeting Agent | Detects meeting-related keywords and auto-populates meeting entries |
+| Insight Agent | Generates personalized productivity tips from daily stats |
+| Reporting Agent | Compiles an end-of-day summary report |
+
+## Current Limitations
+
+- Relies on a local machine + ngrok free tier — the pipeline stops if the host machine goes offline
+- Dashboard currently requires a manual refresh to show newly processed data; real-time auto-refresh is planned for the next phase
+- Authentication is currently a placeholder and the database does not yet separate data by user, so it is not yet ready for multiple simultaneous users
+- Some detection logic still relies on basic keyword matching alongside Gemini, which can occasionally produce false positives
+
+## Roadmap
+
+- Cloud deployment (Render/Railway) with a PostgreSQL database for 24/7 uptime
+- Multi-user support with proper authentication and per-user data isolation
+- Integrations with Jira (ticket creation), Slack/Teams (urgent notifications), and Google Calendar (auto-scheduling)
+
+## Setup
+
 ```bash
+git clone https://github.com/prabs1178/productivity_assistant.git
+cd productivity_assistant
+pip install -r requirements.txt
+# Configure your .env with Gmail OAuth2 credentials and Gemini API key
 python app.py
 ```
 
-### 3. Open in browser
-```
-http://localhost:5000
-```
+Separately, set up n8n (via Docker), configure the Gmail Trigger node with your OAuth2 credentials, and point it to your ngrok-exposed Flask webhook URL.
 
----
+## Author
 
-## Project Structure
-```
-productivity-assistant/
-├── app.py                  ← Flask backend + SQLite API
-├── requirements.txt        ← Python dependencies
-├── instance/
-│   └── productivity.db     ← SQLite database (auto-created)
-└── templates/
-    └── index.html          ← Full frontend dashboard
-```
-
----
-
-## Features Implemented
-
-| Feature | Status |
-|---|---|
-| Dashboard with live stats | ✅ |
-| Email inbox (processed by agents) | ✅ |
-| Meeting detection & AI summaries | ✅ |
-| Task manager (create, filter, complete) | ✅ |
-| Daily productivity reports & chart | ✅ |
-| AI Insights panel | ✅ |
-| Agent activity log | ✅ |
-| AI Agent trigger buttons | ✅ |
-| Simulate new email (auto-creates meeting/task) | ✅ |
-| SQLite database with 6 tables | ✅ |
-
----
-
-## Database Schema (SQLite)
-
-- **emails** — Raw emails fetched by n8n / Email Agent
-- **meetings** — Detected meetings with AI summaries
-- **tasks** — Actionable tasks extracted from emails
-- **ai_insights** — AI-generated productivity tips
-- **daily_reports** — Daily productivity scores & summaries
-- **agent_logs** — Real-time activity log for all 5 agents
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | /api/dashboard | Stats, insights, chart data, agent logs |
-| GET | /api/emails | All processed emails |
-| GET | /api/meetings | All meetings with summaries |
-| GET | /api/tasks | All tasks (filter by ?status=pending/completed) |
-| PATCH | /api/tasks/:id | Update task status |
-| POST | /api/tasks | Create new task |
-| GET | /api/reports | Last 14 days of productivity reports |
-| POST | /api/emails/simulate | Simulate receiving a new email |
-| POST | /api/agents/trigger | Manually trigger an AI agent |
-
----
-
-## Technology Stack
-
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Backend**: Python 3, Flask
-- **Database**: SQLite (via Python sqlite3)
-- **AI (planned)**: Google Gemini API
-- **Automation (planned)**: n8n workflow integration
-
----
-
-## How to Connect n8n (Future Step)
-
-1. Set up n8n with Gmail trigger
-2. Point n8n HTTP Request node to: `POST http://localhost:5000/api/emails/simulate`
-3. Pass email data as JSON body
-4. The backend will process and store it automatically
-
----
-
-## How to Connect Google Gemini (Future Step)
-
-Replace the placeholder summary text in `app.py` with a call to:
-```python
-import google.generativeai as genai
-genai.configure(api_key="YOUR_API_KEY")
-model = genai.GenerativeModel('gemini-pro')
-response = model.generate_content(f"Summarize this meeting email: {email_body}")
-summary = response.text
-```
+**Prabha Kamble** — [LinkedIn](https://linkedin.com/in/prabhakamble-0050a3314)
